@@ -2,98 +2,72 @@
   {
     "id": "pm_awas_yojana",
     "name": "PM Awas Yojana (Urban)",
-    "name_hi": "पीएम आवास योजना",
+    "name_hi": "PM Awas Yojana",
     "url": "https://pmaymis.gov.in",
     "otp": true,
     "difficulty": "medium",
     "docs_required": [
-      {"type": "aadhaar", "label": "Aadhaar Card", "label_hi": "आधार कार्ड"},
-      {"type": "income_certificate", "label": "Income Certificate", "label_hi": "आय प्रमाण पत्र"},
-      {"type": "bank_passbook", "label": "Bank Passbook (first page)", "label_hi": "बैंक पासबुक (पहला पेज)"}
+      {"type": "aadhaar", "label": "Aadhaar Card", "label_hi": "Aadhaar"},
+      {"type": "income_certificate", "label": "Income Certificate", "label_hi": "Income Certificate"},
+      {"type": "bank_passbook", "label": "Bank Passbook", "label_hi": "Bank Passbook"}
     ],
     "guide_steps": [
-      "Portal pe jaao: pmaymis.gov.in",
-      "Citizen Login / Register karo",
-      "Aadhaar se verify karo",
-      "Application form bharao (personal + income + bank details)",
-      "Documents upload karo",
-      "OTP verify karke submit karo"
+      "Portal: pmaymis.gov.in",
+      "Citizen Login / Register",
+      "Aadhaar verify",
+      "Form bharao",
+      "Documents upload",
+      "OTP + submit"
     ]
   },
   {
     "id": "aadhaar_update",
-    "name": "Aadhaar Correction / Update",
-    "name_hi": "आधार सुधार / अपडेट",
-    "url": "https://uidai.gov.in",
+    "name": "Aadhaar Correction",
+    "name_hi": "Aadhaar Update",
+    "url": "https://myaadhaar.uidai.gov.in",
     "otp": true,
     "difficulty": "medium",
     "docs_required": [
-      {"type": "aadhaar", "label": "Current Aadhaar", "label_hi": "मौजूदा आधार"},
-      {"type": "supporting_doc", "label": "Supporting Document (Proof of change)", "label_hi": "सहायक दस्तावेज"}
+      {"type": "aadhaar", "label": "Aadhaar", "label_hi": "Aadhaar"},
+      {"type": "supporting_doc", "label": "Supporting Doc", "label_hi": "Supporting Doc"}
     ],
-    "guide_steps": [
-      "myAadhaar portal pe login karo",
-      "Update Aadhaar / Demographic Update select karo",
-      "Jo field change karni hai choose karo",
-      "Supporting document upload karo",
-      "OTP se verify karke submit"
-    ]
+    "guide_steps": ["myAadhaar login", "Update select", "Document upload", "OTP submit"]
   },
   {
     "id": "pan_card",
-    "name": "PAN Card (New / Correction)",
-    "name_hi": "पेन कार्ड",
-    "url": "https://onlineservices.nsdl.com",
+    "name": "PAN Card",
+    "name_hi": "PAN",
+    "url": "https://www.onlineservices.nsdl.com",
     "otp": true,
     "difficulty": "medium",
     "docs_required": [
-      {"type": "aadhaar", "label": "Aadhaar Card", "label_hi": "आधार कार्ड"},
-      {"type": "photo", "label": "Passport size photo", "label_hi": "पासपोर्ट साइज फोटो"},
-      {"type": "signature", "label": "Signature", "label_hi": "हस्ताक्षर"}
+      {"type": "aadhaar", "label": "Aadhaar", "label_hi": "Aadhaar"}
     ],
-    "guide_steps": [
-      "NSDL / UTIITSL portal pe jaao",
-      "New PAN / Correction form select karo",
-      "Aadhaar based e-KYC use karo",
-      "Details fill karo aur documents upload",
-      "Payment karke submit"
-    ]
+    "guide_steps": ["NSDL portal", "New/Correction form", "e-KYC", "Submit"]
   },
   {
     "id": "digilocker",
     "name": "DigiLocker",
-    "name_hi": "डिजीलॉकर",
-    "url": "https://digilocker.gov.in",
+    "name_hi": "DigiLocker",
+    "url": "https://www.digilocker.gov.in",
     "otp": true,
     "difficulty": "easy",
     "docs_required": [
-      {"type": "aadhaar", "label": "Aadhaar Card", "label_hi": "आधार कार्ड"}
+      {"type": "aadhaar", "label": "Aadhaar", "label_hi": "Aadhaar"}
     ],
-    "guide_steps": [
-      "digilocker.gov.in pe Sign Up / Login",
-      "Aadhaar OTP se verify",
-      "Issued Documents section se docs pull karo"
-    ]
+    "guide_steps": ["Sign up", "Aadhaar OTP", "Pull documents"]
   },
   {
     "id": "scholarship_nsp",
     "name": "NSP Scholarship",
-    "name_hi": "एनएसपी छात्रवृत्ति",
+    "name_hi": "Scholarship",
     "url": "https://scholarships.gov.in",
     "otp": true,
     "difficulty": "medium",
     "docs_required": [
-      {"type": "aadhaar", "label": "Aadhaar Card", "label_hi": "आधार कार्ड"},
-      {"type": "income_certificate", "label": "Income Certificate", "label_hi": "आय प्रमाण पत्र"},
-      {"type": "marksheet", "label": "Previous year marksheet", "label_hi": "पिछले साल की मार्कशीट"},
-      {"type": "bank_passbook", "label": "Bank Passbook", "label_hi": "बैंक पासबुक"}
+      {"type": "aadhaar", "label": "Aadhaar", "label_hi": "Aadhaar"},
+      {"type": "income_certificate", "label": "Income Certificate", "label_hi": "Income"}
     ],
-    "guide_steps": [
-      "scholarships.gov.in pe register / login",
-      "Scheme select karo",
-      "Personal + academic + bank details bharao",
-      "Documents upload",
-      "OTP verify karke final submit"
-    ]
+    "guide_steps": ["Register", "Scheme select", "Form + docs", "OTP submit"]
   }
 ]
