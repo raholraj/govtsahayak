@@ -28,45 +28,25 @@ jobs:
           set -e
           # Remove any leftover Groovy DSL that conflicts with .kts
           rm -f android/build.gradle android/settings.gradle android/app/build.gradle || true
-          # Ensure gradle wrapper + icons exist
+
+          # Ensure gradle wrapper + launcher icons exist (wrapper is gitignored)
           if [ ! -f android/gradle/wrapper/gradle-wrapper.jar ] || [ ! -f android/app/src/main/res/mipmap-hdpi/ic_launcher.png ]; then
+            echo "Generating Android platform files via flutter create..."
             flutter create --platforms=android --project-name govtsahayak --org com.govtsahayak .
-            # Re-apply our clean Kotlin DSL (flutter create may write Groovy on some versions)
-            rm -f android/build.gradle android/settings.gradle android/app/build.gradle || true
           fi
-          # Force correct AGP/Kotlin after any create (Flutter min AGP is 8.11.1 on 3.47+)
-          cat > android/settings.gradle.kts << 'EOF'
-pluginManagement {
-    val flutterSdkPath =
-        run {
-            val properties = java.util.Properties()
-            file("local.properties").inputStream().use { properties.load(it) }
-            val flutterSdkPath = properties.getProperty("flutter.sdk")
-            require(flutterSdkPath != null) { "flutter.sdk not set in local.properties" }
-            flutterSdkPath
-        }
 
-    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+          # Always strip Groovy files that flutter create may have written
+          rm -f android/build.gradle android/settings.gradle android/app/build.gradle || true
 
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
+          # Restore our committed Kotlin DSL (AGP 8.11.1 + Kotlin 2.1.0 + namespace/minSdk)
+          # so flutter create cannot leave us on an old AGP
+          git checkout -- android/settings.gradle.kts android/app/build.gradle.kts android/build.gradle.kts || true
 
-plugins {
-    id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.11.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.1.0" apply false
-}
-
-include(":app")
-EOF
-          # Ensure app/build.gradle.kts keeps our namespace + minSdk
-          if [ -f android/app/build.gradle.kts ]; then
-            grep -q 'namespace = "com.govtsahayak.app"' android/app/build.gradle.kts || true
-          fi
+          # Sanity check
+          echo "=== settings.gradle.kts (first 20 lines) ==="
+          head -20 android/settings.gradle.kts || true
+          echo "=== app/build.gradle.kts namespace check ==="
+          grep -E 'namespace|minSdk|applicationId' android/app/build.gradle.kts || true
 
       - name: Flutter doctor
         run: flutter doctor -v
