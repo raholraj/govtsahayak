@@ -2,36 +2,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:sqflite/sqflite.dart';
 import '../models/message.dart';
 
-/// On-device encrypted SQLite + SharedPreferences.
-/// No server storage. Data stays on phone.
 class StorageService {
   static final StorageService instance = StorageService._();
   StorageService._();
 
   Database? _db;
   static const String _dbName = 'govtsahayak.db';
-  static const String _passphraseKey = 'db_passphrase';
 
   Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? passphrase = prefs.getString(_passphraseKey);
-      if (passphrase == null) {
-        passphrase = DateTime.now().millisecondsSinceEpoch.toString() +
-            (1000 + (DateTime.now().microsecond % 9000)).toString();
-        await prefs.setString(_passphraseKey, passphrase);
-      }
-
       final dir = await getApplicationDocumentsDirectory();
       final path = join(dir.path, _dbName);
-
       _db = await openDatabase(
         path,
-        password: passphrase,
         version: 1,
         onCreate: (db, version) async {
           await db.execute('''
@@ -64,9 +50,9 @@ class StorageService {
           ''');
         },
       );
-      debugPrint('StorageService initialized (encrypted SQLite)');
+      debugPrint('StorageService initialized');
     } catch (e) {
-      debugPrint('Storage init error (fallback to memory): $e');
+      debugPrint('Storage init error: $e');
     }
   }
 
@@ -103,7 +89,7 @@ class StorageService {
         timestamp: DateTime.parse(r['timestamp'] as String),
         imagePath: r['image_path'] as String?,
         extractedData: r['extracted_data'] != null
-            ? jsonDecode(r['extracted_data'] as String)
+            ? jsonDecode(r['extracted_data'] as String) as Map<String, dynamic>
             : null,
         isGuideStep: (r['is_guide_step'] as int?) == 1,
       );
@@ -130,13 +116,11 @@ class StorageService {
     );
   }
 
-  /// Wipe all sensitive data (call on "delete after use" or app close if opted)
   Future<void> wipeAllData() async {
     if (_db == null) return;
     await _db!.delete('messages');
     await _db!.delete('sessions');
     await _db!.delete('extracted_docs');
-    debugPrint('All local data wiped');
   }
 
   Future<void> clearChatHistory() async {
