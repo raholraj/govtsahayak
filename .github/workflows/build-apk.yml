@@ -51,7 +51,7 @@ jobs:
         if: github.event.inputs.build_type != 'debug'
         run: |
           flutter build apk --release \
-            --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
+            --dart-define=OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }} \
             --dart-define=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }} \
             --dart-define=MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }}
 
