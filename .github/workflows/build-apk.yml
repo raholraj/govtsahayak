@@ -23,10 +23,15 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Ensure Android platform files
+      - name: Clean conflicting Gradle files & ensure Android platform
         run: |
-          if [ ! -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+          # Remove any leftover Groovy DSL that conflicts with .kts
+          rm -f android/build.gradle android/settings.gradle android/app/build.gradle || true
+          # Ensure gradle wrapper + icons exist
+          if [ ! -f android/gradle/wrapper/gradle-wrapper.jar ] || [ ! -f android/app/src/main/res/mipmap-hdpi/ic_launcher.png ]; then
             flutter create --platforms=android --project-name govtsahayak --org com.govtsahayak .
+            # Re-apply our clean Kotlin DSL (flutter create may write Groovy on some versions)
+            rm -f android/build.gradle android/settings.gradle android/app/build.gradle || true
           fi
 
       - name: Flutter doctor
