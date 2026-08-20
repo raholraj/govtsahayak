@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
-/// Fallback chain: Gemini → Groq → Mistral
-/// API keys via --dart-define or secrets.
+/// Fallback chain: OpenRouter → Groq → Mistral → offline
+/// Keys via --dart-define / GitHub Secrets (never hardcode).
 class AiService {
   static final AiService instance = AiService._();
   AiService._();
 
-  static const String _geminiKey = String.fromEnvironment(
-    'GEMINI_API_KEY',
+  static const String _openRouterKey = String.fromEnvironment(
+    'OPENROUTER_API_KEY',
     defaultValue: '',
   );
   static const String _groqKey = String.fromEnvironment(
@@ -20,6 +20,9 @@ class AiService {
     'MISTRAL_API_KEY',
     defaultValue: '',
   );
+
+  static const String _openRouterModel = 'openai/gpt-oss-20b:free';
+  static const String _openRouterVisionModel = 'google/gemma-4-26b-a4b-it:free';
 
   static const String _systemPrompt = '''
 Tu "Sahayak" hai — ek dost jaisa AI jo sarkari kaam mein madad karta hai.
@@ -33,7 +36,7 @@ RULES:
 6. Agar kuch samajh na aaye ya confidence kam ho, guess mat kar — seedha poochh le user se.
 7. Tu kabhi bhi "main ye kar dunga" nahi bolega bina user ko dikhaye ki kya karne wala hai.
 8. Tone: dosti wali, lekin professional.
-9. Guided Mode mein ho — sirf step-by-step guide do, form khud mat bharao.
+9. Guided / Semi-auto mode mein ho — form khud mat submit karo.
 10. Short, clear replies rakho.
 ''';
 
@@ -55,13 +58,13 @@ Sahayak:
 ''';
 
     if (needsVision && imageBase64 != null) {
-      return _callGeminiVision(prompt, imageBase64);
+      return _callWithVision(prompt, imageBase64);
     }
 
     try {
-      return await _callGemini(prompt);
+      return await _callOpenRouter(prompt);
     } catch (e) {
-      debugPrint('Gemini failed: $e');
+      debugPrint('OpenRouter failed: $e');
       try {
         return await _callGroq(prompt);
       } catch (e2) {
@@ -89,16 +92,22 @@ Sirf JSON return karo, kuch aur nahi:
 }
 ''';
     try {
-      final raw = await _callGemini(prompt, jsonMode: true);
+      final raw = await _callOpenRouter(prompt, jsonMode: true);
       final cleaned = raw.replaceAll(RegExp(r'```json|```'), '').trim();
       return jsonDecode(cleaned) as Map<String, dynamic>;
     } catch (_) {
-      return {
-        'service': 'unknown',
-        'action': 'general_help',
-        'confidence': 0.3,
-        'clarification_needed': true,
-      };
+      try {
+        final raw = await _callGroq(prompt);
+        final cleaned = raw.replaceAll(RegExp(r'```json|```'), '').trim();
+        return jsonDecode(cleaned) as Map<String, dynamic>;
+      } catch (_) {
+        return {
+          'service': 'unknown',
+          'action': 'general_help',
+          'confidence': 0.3,
+          'clarification_needed': true,
+        };
+      }
     }
   }
 
@@ -127,83 +136,95 @@ Agar field clearly visible nahi hai to "UNCLEAR" likho — kabhi guess mat karo.
 Sirf JSON return karo.
 ''';
     try {
-      final raw = await _callGeminiVision(prompt, imageBase64);
+      final raw = await _callWithVision(prompt, imageBase64);
       final cleaned = raw.replaceAll(RegExp(r'```json|```'), '').trim();
       return jsonDecode(cleaned) as Map<String, dynamic>;
     } catch (e) {
       debugPrint('Extract failed: $e');
       return {
-        'fields': {'error': 'Could not read document clearly'},
+        'fields': {'error': 'Could not read document clearly. Fields type karke bata do.'},
         'confidence': {},
       };
     }
   }
 
-  Future<String> _callGemini(String prompt, {bool jsonMode = false}) async {
-    if (_geminiKey.isEmpty) {
-      throw Exception('GEMINI_API_KEY not set');
-    }
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$_geminiKey',
-    );
+  Future<String> _callOpenRouter(String prompt, {bool jsonMode = false}) async {
+    if (_openRouterKey.isEmpty) throw Exception('OPENROUTER_API_KEY not set');
+    final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
     final body = {
-      'contents': [
-        {
-          'parts': [
-            {'text': prompt}
-          ]
-        }
+      'model': _openRouterModel,
+      'messages': [
+        {'role': 'system', 'content': _systemPrompt},
+        {'role': 'user', 'content': prompt},
       ],
-      'generationConfig': {
-        'temperature': 0.4,
-        'maxOutputTokens': 1024,
-        if (jsonMode) 'responseMimeType': 'application/json',
-      },
+      'temperature': 0.4,
+      'max_tokens': 1024,
+      if (jsonMode) 'response_format': {'type': 'json_object'},
     };
     final res = await http
-        .post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 30));
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_openRouterKey',
+            'HTTP-Referer': 'https://github.com/raholraj/govtsahayak',
+            'X-Title': 'GovtSahayak',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 40));
     if (res.statusCode != 200) {
-      throw Exception('Gemini ${res.statusCode}: ${res.body}');
+      throw Exception('OpenRouter ${res.statusCode}: ${res.body}');
     }
     final data = jsonDecode(res.body);
-    return data['candidates'][0]['content']['parts'][0]['text'] as String;
+    return data['choices'][0]['message']['content'] as String;
   }
 
-  Future<String> _callGeminiVision(String prompt, String imageBase64) async {
-    if (_geminiKey.isEmpty) {
-      throw Exception('GEMINI_API_KEY not set');
-    }
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$_geminiKey',
-    );
-    final body = {
-      'contents': [
-        {
-          'parts': [
-            {'text': prompt},
+  Future<String> _callWithVision(String prompt, String imageBase64) async {
+    if (_openRouterKey.isNotEmpty) {
+      try {
+        final url = Uri.parse('https://openrouter.ai/api/v1/chat/completions');
+        final body = {
+          'model': _openRouterVisionModel,
+          'messages': [
             {
-              'inline_data': {
-                'mime_type': 'image/jpeg',
-                'data': imageBase64,
-              }
-            }
-          ]
+              'role': 'user',
+              'content': [
+                {'type': 'text', 'text': prompt},
+                {
+                  'type': 'image_url',
+                  'image_url': {
+                    'url': 'data:image/jpeg;base64,$imageBase64',
+                  },
+                },
+              ],
+            },
+          ],
+          'temperature': 0.2,
+          'max_tokens': 1024,
+        };
+        final res = await http
+            .post(
+              url,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $_openRouterKey',
+                'HTTP-Referer': 'https://github.com/raholraj/govtsahayak',
+                'X-Title': 'GovtSahayak',
+              },
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 50));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          return data['choices'][0]['message']['content'] as String;
         }
-      ],
-      'generationConfig': {
-        'temperature': 0.2,
-        'maxOutputTokens': 1024,
-      },
-    };
-    final res = await http
-        .post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 45));
-    if (res.statusCode != 200) {
-      throw Exception('Gemini Vision ${res.statusCode}');
+        debugPrint('OpenRouter vision ${res.statusCode}');
+      } catch (e) {
+        debugPrint('OpenRouter vision failed: $e');
+      }
     }
-    final data = jsonDecode(res.body);
-    return data['candidates'][0]['content']['parts'][0]['text'] as String;
+    throw Exception('Vision extraction unavailable');
   }
 
   Future<String> _callGroq(String prompt) async {
@@ -219,12 +240,14 @@ Sirf JSON return karo.
       'max_tokens': 1024,
     };
     final res = await http
-        .post(url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_groqKey',
-            },
-            body: jsonEncode(body))
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_groqKey',
+          },
+          body: jsonEncode(body),
+        )
         .timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) throw Exception('Groq ${res.statusCode}');
     final data = jsonDecode(res.body);
@@ -244,12 +267,14 @@ Sirf JSON return karo.
       'max_tokens': 1024,
     };
     final res = await http
-        .post(url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_mistralKey',
-            },
-            body: jsonEncode(body))
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $_mistralKey',
+          },
+          body: jsonEncode(body),
+        )
         .timeout(const Duration(seconds: 30));
     if (res.statusCode != 200) throw Exception('Mistral ${res.statusCode}');
     final data = jsonDecode(res.body);
@@ -263,7 +288,7 @@ Sirf JSON return karo.
           '3 documents chahiye: Aadhaar, Income Certificate, aur Bank Passbook. '
           'Photo bhejo ek ek karke, main guide karta hoon.';
     }
-    if (lower.contains('aadhaar') || lower.contains('आधार')) {
+    if (lower.contains('aadhaar') || lower.contains('\u0906\u0927\u093e\u0930')) {
       return 'Aadhaar update/correction ke liye myAadhaar portal use hota hai. '
           'Kaunsi detail change karni hai? (naam, address, DOB, mobile?)';
     }
