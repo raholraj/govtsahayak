@@ -13,6 +13,7 @@ import '../services/knowledge_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/typing_indicator.dart';
+import 'summary_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -280,6 +281,29 @@ class _ChatScreenState extends State<ChatScreen> {
       _pickImage(ImageSource.gallery);
     } else if (text.contains('steps') || text.contains('Steps') || text.contains('batao')) {
       _sendText('steps batao');
+    } else if (text.toLowerCase().contains('haan') || text.toLowerCase().contains('sahi hai')) {
+      if (_lastExtracted != null && _currentService != null) {
+        final fields = Map<String, dynamic>.from(
+          (_lastExtracted!['fields'] as Map?) ?? {},
+        );
+        if (fields.isNotEmpty && !fields.containsKey('error')) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => SummaryScreen(
+                service: _currentService!,
+                fields: fields,
+              ),
+            ),
+          );
+          _addAssistant(
+            'Form summary khol diya. Har field copy karke portal pe paste kar sakte ho. '
+            'PDF bhi bana sakte ho proof ke liye.',
+            quickReplies: ['Aur document bhejo', 'Steps batao', 'Naya kaam'],
+          );
+          return;
+        }
+      }
+      _sendText(text);
     } else {
       _sendText(text);
     }
